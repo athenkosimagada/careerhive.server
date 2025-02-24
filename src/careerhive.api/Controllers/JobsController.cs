@@ -264,9 +264,14 @@ public class JobsController : ControllerBase
     [Authorize]
     public async Task<IActionResult> SearchJobs([FromQuery] string keyword)
     {
-        if (string.IsNullOrEmpty(keyword) || keyword.Length < 3)
+        if (string.IsNullOrEmpty(keyword) || keyword.Length < 2)
         {
-            return BadRequest("Keyword must be at least 3 characters long.");
+            return BadRequest(new
+            {
+                Success = false,
+                StatusCode = StatusCodes.Status400BadRequest,
+                Message = "Keyword must be at least 2 characters long."
+            });
         }
 
         Expression<Func<Job, bool>> searchPredicate = j =>
