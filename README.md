@@ -41,6 +41,7 @@ In today's competitive job market, finding the right opportunity can be a daunti
 
 ## Folder Structure
 
+```paintext
 careerhive/
 ├── src/
 │   ├── careerhive.api/        # ASP.NET Core Web API project
@@ -54,6 +55,7 @@ careerhive/
 ├── NOTICE             # Notices
 ├── README.md          # Main project documentation
 └── tests/             # Directory for test projects
+```
 
 ## Installation
 
