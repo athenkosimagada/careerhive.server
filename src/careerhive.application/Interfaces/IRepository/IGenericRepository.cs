@@ -17,5 +17,8 @@ public interface IGenericRepository<T> where T : class
     Task<int> CountAsync(Expression<Func<T, bool>>? predicate = null);
     Task<T?> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate);
 
-    Task<IEnumerable<T>> GetPagedAsync(int pageNumber, int pageSize, Expression<Func<T, object>>? orderBy = null, bool descending = false, params Expression<Func<T, object>>[] includes);
+    Task<IEnumerable<T>> GetPagedAsync(int pageNumber, int pageSize, 
+        Expression<Func<T, object>>? orderBy = null, bool descending = false,
+        Expression<Func<T, bool>>? where = null,
+        params Expression<Func<T, object>>[] includes);
 }

@@ -1,4 +1,5 @@
-﻿using System.Security.Claims;
+﻿using System.Linq.Expressions;
+using System.Security.Claims;
 using AutoMapper;
 using careerhive.application.DTOs.Request;
 using careerhive.application.DTOs.Response;
@@ -7,6 +8,7 @@ using careerhive.domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace careerhive.api.Controllers;
 [Route("api/jobs")]
@@ -42,7 +44,7 @@ public class JobsController : ControllerBase
 
         if (includeUser)
         {
-            jobs = await _genericRepository.GetPagedAsync(pageNumber, pageSize, j => j.CreatedAt, true, j => j.PostedBy);
+            jobs = await _genericRepository.GetPagedAsync(pageNumber, pageSize, j => j.CreatedAt, true, null, j => j.PostedBy);
         }
         else
         {
@@ -142,7 +144,7 @@ public class JobsController : ControllerBase
         {
             Title = addJobRequestDto.Title,
             Description = addJobRequestDto.Description,
-            ExternalLink = addJobRequestDto.ExternalLink,
+            ExternalLink = addJobRequestDto.ExternalLink!,
             PostedByUserId = Guid.Parse(userId)
         };
 
@@ -197,7 +199,7 @@ public class JobsController : ControllerBase
 
         job.Title = updateJobRequestDto.Title;
         job.Description = updateJobRequestDto.Description;
-        job.ExternalLink = updateJobRequestDto.ExternalLink;
+        job.ExternalLink = updateJobRequestDto.ExternalLink!;
         job.UpdatedAt = DateTime.UtcNow;
 
         await _genericRepository.UpdateAsync(job);
@@ -255,6 +257,42 @@ public class JobsController : ControllerBase
             Success = true,
             StatusCode = StatusCodes.Status200OK,
             Message = "Job deleted successfully."
+        });
+    }
+
+    [HttpGet("search")]
+    [Authorize]
+    public async Task<IActionResult> SearchJobs([FromQuery] string keyword)
+    {
+        if (string.IsNullOrEmpty(keyword) || keyword.Length < 3)
+        {
+            return BadRequest("Keyword must be at least 3 characters long.");
+        }
+
+        Expression<Func<Job, bool>> searchPredicate = j =>
+            EF.Functions.Like(j.Title, $"%{keyword}%") ||
+            EF.Functions.Like(j.Description, $"%{keyword}%") ||
+            EF.Functions.Like(j.ExternalLink, $"%{keyword}%");
+
+        int pageNumber = 1;
+        int pageSize = 10;
+
+        var jobs = await _genericRepository.GetPagedAsync(
+            pageNumber,
+            pageSize,
+            j => j.CreatedAt,
+            true,
+            searchPredicate,
+            j => j.PostedBy
+        );
+
+        var jobResponseDtos = _mapper.Map<IEnumerable<JobResponseDto>>(jobs);
+
+        return Ok(new
+        {
+            Success = true,
+            StatusCode = StatusCodes.Status200OK,
+            Data = jobResponseDtos
         });
     }
 }

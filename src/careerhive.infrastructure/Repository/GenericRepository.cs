@@ -81,7 +81,10 @@ public class GenericRepository<T> : IGenericRepository<T> where T : class
         return await _dbSet.FirstOrDefaultAsync(predicate);
     }
 
-    public async Task<IEnumerable<T>> GetPagedAsync(int pageNumber, int pageSize, Expression<Func<T, object>>? orderBy = null, bool descending = false, params Expression<Func<T, object>>[] includes)
+    public async Task<IEnumerable<T>> GetPagedAsync(int pageNumber, int pageSize, 
+        Expression<Func<T, object>>? orderBy = null, bool descending = false,
+        Expression<Func<T, bool>>? where = null,
+        params Expression<Func<T, object>>[] includes)
     {
         IQueryable<T> query = _dbSet;
 
@@ -91,6 +94,11 @@ public class GenericRepository<T> : IGenericRepository<T> where T : class
             {
                 query = query.Include(include);
             }
+        }
+
+        if (where != null)
+        {
+            query = query.Where(where);
         }
 
         if (orderBy != null)

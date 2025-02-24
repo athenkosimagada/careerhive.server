@@ -6,7 +6,7 @@ public class Job : BaseEntity<Guid>
 {
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
-    public string? ExternalLink { get; set; }
+    public string ExternalLink { get; set; } = string.Empty;
 
     public Guid PostedByUserId { get; set; }
 
