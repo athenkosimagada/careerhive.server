@@ -30,7 +30,7 @@ builder.Services.AddSwaggerGen(c =>
         Scheme = "Bearer",
         BearerFormat = "JWT",
         In = ParameterLocation.Header,
-        Description = "JWT Authorization header using the Bearer scheme.  The token is a JWT (JSON Web Token) access token. Format: Bearer <access-token>"
+        Description = "JWT Authorization header using the Bearer scheme.  The token is a JWT (JSON Web Token) access token. Format: <access-token>"
     });
 
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
