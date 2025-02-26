@@ -217,6 +217,11 @@ public class JobsController : ControllerBase
             });
         }
 
+        if (job.PostedByUserId.ToString() != userId)
+        {
+            return Forbid();
+        }
+
         job.Title = updateJobRequestDto.Title;
         job.Description = updateJobRequestDto.Description;
         job.ExternalLink = updateJobRequestDto.ExternalLink!;
@@ -268,6 +273,11 @@ public class JobsController : ControllerBase
                 StatusCode = StatusCodes.Status404NotFound,
                 Message = "Job not found."
             });
+        }
+
+        if (job.PostedByUserId.ToString() != userId)
+        {
+            return Forbid();
         }
 
         await _genericRepository.RemoveAsync(job);
