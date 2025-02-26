@@ -49,10 +49,17 @@ public class AccountService : IAccountService
             throw new AlreadyExistsException("A user with this email already exists.");
         }
 
-        var existingUserWithPhoneNumber = await _userRepository.GetUserByExpressionAsync(u => u.PhoneNumber == registerDto.PhoneNumber);
+        var existingUserWithPhoneNumber = await _userRepository.GetUserAsync(u => u.PhoneNumber == registerDto.PhoneNumber);
         if (existingUserWithPhoneNumber != null)
         {
             throw new AlreadyExistsException("A user with this phone number already exists.");
+        }
+
+        var roles = await _userRepository.GetRolesAsync();
+
+        if (!string.IsNullOrWhiteSpace(registerDto.Role) && !roles.Contains(registerDto.Role))
+        {
+            throw new NotFoundException("The requested role is invalid or unavailable.");
         }
 
         var user = new User
@@ -65,15 +72,18 @@ public class AccountService : IAccountService
             PhoneNumber = registerDto.PhoneNumber
         };
 
+        var roleToAssign = string.IsNullOrWhiteSpace(registerDto.Role) ? "USER" : registerDto.Role;
+        await _userRepository.AddToRoleAsync(user, roleToAssign);
+
         var result = await _userRepository.CreateAsync(user, registerDto.Password);
 
         if (!result.Succeeded)
         {
+            await _userRepository.RemoveFromRoleAsync(user, roleToAssign);
+
             var error = result.Errors.FirstOrDefault();
             throw new ArgumentException(error?.Description);
         }
-
-        await _userRepository.AddToRoleAsync(user, registerDto.Role!);
     }
 
     public async Task<LoginResponseDto> LoginAsync(LoginRequestDto loginDto)
@@ -99,7 +109,7 @@ public class AccountService : IAccountService
             throw new UnauthorizedAccessException("Invalid email or password.");
         }
 
-        var roles = await _userRepository.GetRolesAsync(user);
+        var roles = await _userRepository.GetUserRolesAsync(user);
         
         var accessToken = _jwtService.GenerateAccessToken(user, roles);
         var refreshToken =  await _jwtService.GenerateRefreshTokenAsync(user);
@@ -306,7 +316,7 @@ public class AccountService : IAccountService
             throw new AuthenticationException("Invalid refresh token.");
         }
 
-        var roles = await _userRepository.GetRolesAsync(refreshToken.User!);
+        var roles = await _userRepository.GetUserRolesAsync(refreshToken.User!);
 
         var newAccessToken = _jwtService.GenerateAccessToken(refreshToken.User!, roles);
         var newRefreshToken = await _jwtService.GenerateRefreshTokenAsync(refreshToken.User!);

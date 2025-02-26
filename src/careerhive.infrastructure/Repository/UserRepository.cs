@@ -39,7 +39,7 @@ public class UserRepository : IUserRepository
         return await _userManager.FindByEmailAsync(email);
     }
 
-    public async Task<User?> GetUserByExpressionAsync(Expression<Func<User, bool>> expression)
+    public async Task<User?> GetUserAsync(Expression<Func<User, bool>> expression)
     {
         return await _userManager.Users.FirstOrDefaultAsync(expression);
     }
@@ -61,9 +61,6 @@ public class UserRepository : IUserRepository
 
     public async Task<IdentityResult> AddToRoleAsync(User user, string role)
     {
-        if (string.IsNullOrWhiteSpace(role)) role = "USER";
-        else role = role.ToUpper();
-
         return await _userManager.AddToRoleAsync(user, role);
     }
 
@@ -72,7 +69,7 @@ public class UserRepository : IUserRepository
         return await _userManager.RemoveFromRoleAsync(user, role);
     }
 
-    public async Task<IList<string>> GetRolesAsync(User user)
+    public async Task<IList<string>> GetUserRolesAsync(User user)
     {
         return await _userManager.GetRolesAsync(user);
     }
@@ -115,5 +112,10 @@ public class UserRepository : IUserRepository
     public async Task<IdentityResult> ChangePasswordAsync(User user, string oldPassword, string newPassword)
     {
         return await _userManager.ChangePasswordAsync(user, oldPassword, newPassword);
+    }
+
+    public async Task<IList<string?>> GetRolesAsync()
+    {
+        return await _context.Roles.Select(r => r.Name).ToListAsync();
     }
 }
