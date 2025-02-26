@@ -72,17 +72,30 @@ public class AccountService : IAccountService
             PhoneNumber = registerDto.PhoneNumber
         };
 
-        var roleToAssign = string.IsNullOrWhiteSpace(registerDto.Role) ? "USER" : registerDto.Role;
-        await _userRepository.AddToRoleAsync(user, roleToAssign);
+        var createUserResult = await _userRepository.CreateAsync(user, registerDto.Password);
 
-        var result = await _userRepository.CreateAsync(user, registerDto.Password);
-
-        if (!result.Succeeded)
+        if (!createUserResult.Succeeded)
         {
-            await _userRepository.RemoveFromRoleAsync(user, roleToAssign);
+            var error = createUserResult.Errors.FirstOrDefault();
+            throw new ArgumentException(error?.Description ?? "User registration failed.");
+        }
 
-            var error = result.Errors.FirstOrDefault();
-            throw new ArgumentException(error?.Description);
+        var roleToAssign = registerDto.Role ?? "User";
+        try
+        {
+            var addToRoleResult = await _userRepository.AddToRoleAsync(user, roleToAssign);
+
+            if (!addToRoleResult.Succeeded)
+            {
+                await _userRepository.DeleteAsync(user);
+                var roleError = addToRoleResult.Errors.FirstOrDefault()?.Description ?? "Failed to assign user role.";
+                throw new ArgumentException(roleError);
+            }
+        }
+        catch (Exception ex)
+        {
+            await _userRepository.DeleteAsync(user);
+            throw new ArgumentException("An error occurred while assigning a role.", ex);
         }
     }
 

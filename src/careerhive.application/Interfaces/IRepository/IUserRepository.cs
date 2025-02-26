@@ -11,13 +11,14 @@ public interface IUserRepository
     Task<User?> GetUserByIdAsync(string userId);
     Task<User?> GetUserByEmailAsync(string email);
     Task<bool> IsEmailUniqueAsync(string email);
-    Task<User?> GetUserByExpressionAsync(Expression<Func<User, bool>> expression);
+    Task<User?> GetUserAsync(Expression<Func<User, bool>> expression);
     Task<List<User>> GetAllUsersAsync(Expression<Func<User, bool>> expression);
     Task<IdentityResult> UpdateAsync(User user);
     Task<IdentityResult> DeleteAsync(User user);
     Task<IdentityResult> AddToRoleAsync(User user, string role);
     Task<IdentityResult> RemoveFromRoleAsync(User user, string role);
-    Task<IList<string>> GetRolesAsync(User user);
+    Task<IList<string>> GetUserRolesAsync(User user);
+    Task<IList<string?>> GetRolesAsync();
     Task<bool> CheckPasswordAsync(User user, string password);
     Task<IdentityResult> ConfirmEmailAsync(User user, string emailToken);
     Task<IdentityResult> ResetPasswordAsync(User user, string emailToken,string newPassword);
