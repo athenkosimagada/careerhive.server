@@ -14,4 +14,5 @@ public class User : IdentityUser<Guid>
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     public virtual ICollection<Job> Jobs { get; set; } = new List<Job>();
+    public UserSubscription? Subscription { get; set; }
 }

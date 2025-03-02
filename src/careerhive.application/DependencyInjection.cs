@@ -17,6 +17,7 @@ public static class DependencyInjection
         services.AddScoped<IAccountService, AccountService>();
         services.AddScoped<IJwtService, JwtService>();
         services.AddScoped<IEmailService, EmailService>();
+        services.AddScoped<ISafeBrowsingService, SafeBrowsingService>();
 
         var secretKey = configuration["JwtSettings:SecretKey"];
         var issuer = configuration["JwtSettings:Issuer"];

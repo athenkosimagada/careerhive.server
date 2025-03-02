@@ -25,4 +25,6 @@ public interface IAccountService
     Task Manage2faAsync(string userId, Manage2faRequestDto manage2FaRequestDto);
 
     Task ChangePasswordAsync(string userId, ChangePasswordRequestDto changePasswordRequestDto);
+
+    Task LogoutAsync(string userId, string accessToken);
 }

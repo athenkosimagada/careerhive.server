@@ -17,6 +17,7 @@ public class AccountService : IAccountService
 {
     private readonly IUserRepository _userRepository;
     private readonly IUserTokenRepository _userTokenRepository;
+    private readonly IGenericRepository<InvalidToken> _invalidTokenRepository;
     private readonly IJwtService _jwtService;
     private readonly IEmailService _emailService;
     private readonly IMapper _mapper;
@@ -26,6 +27,7 @@ public class AccountService : IAccountService
     public AccountService(
         IUserRepository userRepository,
         IUserTokenRepository userTokenRepository,
+        IGenericRepository<InvalidToken> invalidTokenRepository,
         IJwtService jwtService,
         IEmailService emailService,
         IMapper mapper,
@@ -34,6 +36,7 @@ public class AccountService : IAccountService
     {
         _userRepository = userRepository;
         _userTokenRepository = userTokenRepository;
+        _invalidTokenRepository = invalidTokenRepository;
         _jwtService = jwtService;
         _emailService = emailService;
         _mapper = mapper;
@@ -55,16 +58,16 @@ public class AccountService : IAccountService
             throw new AlreadyExistsException("A user with this phone number already exists.");
         }
 
-        var roles = await _userRepository.GetRolesAsync();
+        var roles = (await _userRepository.GetRolesAsync()).Select(role => role!.ToLower()).ToList();
 
-        if (!string.IsNullOrWhiteSpace(registerDto.Role) && !roles.Contains(registerDto.Role))
+        if (!string.IsNullOrWhiteSpace(registerDto.Role) && !roles.Contains(registerDto.Role.ToLower()))
         {
             throw new NotFoundException("The requested role is invalid or unavailable.");
         }
 
         var user = new User
         {
-            UserName = registerDto.Email,
+            UserName = registerDto.Email.Split("@")[0],
             Email = registerDto.Email,
             FirstName = registerDto.FirstName,
             LastName = registerDto.LastName,
@@ -446,7 +449,41 @@ public class AccountService : IAccountService
         }
     }
 
+    public async Task LogoutAsync(string userId, string accessToken)
+    {
+        var principal = _jwtService.GetPrincipalFromAccessToken(accessToken);
+        if (principal == null)
+        {
+            _logger.LogWarning($"Invalid or expired token attempt for user {userId}");
+            throw new UnauthorizedAccessException("Invalid or expired token.");
+        }
 
+        var expirationClaim = principal.FindFirst("exp");
+        if (expirationClaim == null)
+        {
+            _logger.LogWarning("Expiration claim missing from the token.");
+            throw new UnauthorizedAccessException("Invalid token: expiration claim missing.");
+        }
+
+        DateTime expirationTime;
+        try
+        {
+            expirationTime = DateTimeOffset.FromUnixTimeSeconds(long.Parse(expirationClaim.Value)).DateTime;
+        }
+        catch (FormatException ex)
+        {
+            _logger.LogError($"Failed to parse expiration claim: {ex.Message}");
+            throw new UnauthorizedAccessException("Invalid token: could not parse expiration claim.");
+        }
+
+        InvalidToken invalidToken = new InvalidToken
+        {
+            Token = accessToken,
+            ExpiryTime = expirationTime,
+        };
+
+        await _invalidTokenRepository.AddAsync(invalidToken);
+    }
 
     private string GenerateConfirmationLink(Guid userId, string token)
     {

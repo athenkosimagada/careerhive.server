@@ -13,6 +13,10 @@ using careerhive.api;
 
 var builder = WebApplication.CreateBuilder(args);
 
+if (builder.Environment.IsDevelopment())
+{
+    builder.Configuration.AddUserSecrets<Program>();
+}
 
 builder.Services.AddAPI(builder.Configuration);
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -28,12 +32,21 @@ if (app.Environment.IsDevelopment())
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
+app.Use(async (context, next) =>
+{
+    context.Response.Headers.Append("Content-Security-Policy", "default-src 'self'; script-src 'self'");
+    await next();
+});
+
 app.UseRouting();
+
+app.UseRateLimiter();
 
 app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
 
 app.MapControllers();
 

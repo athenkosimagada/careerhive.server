@@ -21,7 +21,7 @@ public class JwtService : IJwtService
 
     public JwtService(
         IUserTokenRepository userTokenRepository,
-        IConfiguration configuration, 
+        IConfiguration configuration,
         ILogger<JwtService> logger)
     {
         _userTokenRepository = userTokenRepository;
@@ -85,6 +85,63 @@ public class JwtService : IJwtService
         await _userTokenRepository.AddTokenAsync(applicationUserToken);
 
         return refreshToken;
+    }
+
+    public ClaimsPrincipal GetPrincipalFromAccessToken(string accessToken)
+    {
+        var secretKey = _configuration["JwtSettings:SecretKey"];
+        var issuer = _configuration["JwtSettings:Issuer"];
+        var audience = _configuration["JwtSettings:Audience"];
+
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey!));
+
+        var tokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = false,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+
+            ValidIssuer = issuer,
+            ValidAudience = audience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey!)),
+            ClockSkew = TimeSpan.Zero
+        };
+
+        var tokenHandler = new JwtSecurityTokenHandler();
+        SecurityToken securityToken;
+
+        if (!tokenHandler.CanReadToken(accessToken))
+        {
+            _logger.LogWarning("Invalid token format. Token cannot be read as a JWT.");
+            throw new SecurityTokenException("Invalid token provided.");
+        }
+
+        try
+        {
+            var principal = tokenHandler.ValidateToken(accessToken, tokenValidationParameters, out securityToken);
+            return principal;
+        }
+        catch (SecurityTokenExpiredException ex)
+        {
+            _logger.LogWarning(ex, "Expired token used for refresh token request.");
+            throw new SecurityTokenExpiredException("The access token has expired.", ex);
+        }
+        catch (SecurityTokenInvalidSignatureException ex)
+        {
+            _logger.LogError(ex, "Invalid token signature.");
+            throw new SecurityTokenInvalidSignatureException("The access token has an invalid signature.", ex);
+        }
+        catch (SecurityTokenException ex)
+        {
+            _logger.LogError(ex, "A SecurityTokenException occurred: {Message}", ex.Message);
+            throw new SecurityTokenException("An error occurred during token validation.", ex);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An unexpected error occurred during token validation.");
+            throw new SecurityTokenException("Token validation failed due to an unexpected error.", ex);
+        }
     }
 
     public ClaimsPrincipal GetPrincipalFromExpiredToken(string accessToken)

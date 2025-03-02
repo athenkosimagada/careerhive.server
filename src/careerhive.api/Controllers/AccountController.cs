@@ -1,13 +1,17 @@
-﻿using System.Security.Claims;
+﻿using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using Azure.Core;
 using careerhive.application.DTOs;
 using careerhive.application.DTOs.Request;
 using careerhive.application.DTOs.Response;
+using careerhive.application.Interfaces.IRepository;
 using careerhive.application.Interfaces.IService;
 using careerhive.domain.Entities;
+using careerhive.domain.Exceptions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace careerhive.api.Controllers;
@@ -17,13 +21,20 @@ namespace careerhive.api.Controllers;
 public class AccountController : ControllerBase
 {
     private readonly IAccountService _accountService;
+    private readonly IGenericRepository<UserSubscription> _userSubscriptionRepository;
+    private readonly IGenericRepository<InvalidToken> _invalidTokenRepository;
 
-    public AccountController(IAccountService authService)
+    public AccountController(IAccountService authService, 
+        IGenericRepository<UserSubscription> userSubscriptionRepository,
+        IGenericRepository<InvalidToken> invalidTokenRepository)
     {
         _accountService = authService;
+        _userSubscriptionRepository = userSubscriptionRepository;
+        _invalidTokenRepository = invalidTokenRepository;
     }
 
     [HttpPost("register")]
+    [EnableRateLimiting("register")]
     public async Task<IActionResult> Register(RegisterRequestDto registerDto)
     {
         try
@@ -43,6 +54,7 @@ public class AccountController : ControllerBase
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting("login")]
     public async Task<IActionResult> Login(LoginRequestDto loginDto)
     {
         try
@@ -63,6 +75,7 @@ public class AccountController : ControllerBase
     }
 
     [HttpPost("refresh")]
+    [EnableRateLimiting("post")]
     public async Task<IActionResult> RefreshToken(RefreshTokenRequestDto refreshTokenDto)
     {
         try
@@ -83,6 +96,7 @@ public class AccountController : ControllerBase
     }
 
     [HttpPost("resendConfirmationEmail")]
+    [EnableRateLimiting("post")]
     public async Task<IActionResult> ResendConfirmationEmail([FromBody] ResendConfirmationRequestDto resendConfirmationDto)
     {
         try
@@ -103,6 +117,7 @@ public class AccountController : ControllerBase
     }
 
     [HttpGet("confirmEmail")]
+    [EnableRateLimiting("get")]
     public async Task<IActionResult> ConfirmEmail([FromQuery] string userId, [FromQuery] string token)
     {
         try
@@ -123,6 +138,7 @@ public class AccountController : ControllerBase
     }
 
     [HttpPost("forgotPassword")]
+    [EnableRateLimiting("post")]
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequestDto forgotPasswordRequestDto)
     {
         try
@@ -143,6 +159,7 @@ public class AccountController : ControllerBase
     }
 
     [HttpPost("resetPassword")]
+    [EnableRateLimiting("post")]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequestDto resetPasswordRequestDto, [FromQuery] string userId, [FromQuery] string token)
     {
         try
@@ -164,10 +181,24 @@ public class AccountController : ControllerBase
 
     [HttpGet("manage/info")]
     [Authorize]
+    [EnableRateLimiting("get")]
     public async Task<IActionResult> GetUserInfo()
     {
         try
         {
+            var accessToken = Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
+
+            bool isTokenInvalid = await _invalidTokenRepository.ExistsAsync(t =>  t.Token == accessToken);
+            if (isTokenInvalid)
+            {
+                return Unauthorized(new
+                {
+                    Success = false,
+                    StatusCode = StatusCodes.Status401Unauthorized,
+                    Message = "Invalid authentication token.."
+                });
+            }
+
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (string.IsNullOrEmpty(userId))
@@ -197,10 +228,24 @@ public class AccountController : ControllerBase
 
     [HttpPost("manage/info")]
     [Authorize]
+    [EnableRateLimiting("post")]
     public async Task<IActionResult> UpdateUserInfo([FromBody] UpdateUserInfoRequestDto updateUserInfoRequestDto)
     {
         try
         {
+            var accessToken = Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
+
+            bool isTokenInvalid = await _invalidTokenRepository.ExistsAsync(t => t.Token == accessToken);
+            if (isTokenInvalid)
+            {
+                return Unauthorized(new
+                {
+                    Success = false,
+                    StatusCode = StatusCodes.Status401Unauthorized,
+                    Message = "Invalid authentication token.."
+                });
+            }
+
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (string.IsNullOrEmpty(userId))
@@ -230,10 +275,24 @@ public class AccountController : ControllerBase
 
     [HttpPost("manage/2fa")]
     [Authorize]
+    [EnableRateLimiting("post")]
     public async Task<IActionResult> Manage2fa(Manage2faRequestDto manage2FaRequestDto)
     {
         try
         {
+            var accessToken = Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
+
+            bool isTokenInvalid = await _invalidTokenRepository.ExistsAsync(t => t.Token == accessToken);
+            if (isTokenInvalid)
+            {
+                return Unauthorized(new
+                {
+                    Success = false,
+                    StatusCode = StatusCodes.Status401Unauthorized,
+                    Message = "Invalid authentication token.."
+                });
+            }
+
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (string.IsNullOrEmpty(userId))
@@ -263,10 +322,24 @@ public class AccountController : ControllerBase
 
     [HttpPost("manage/password")]
     [Authorize]
+    [EnableRateLimiting("post")]
     public async Task<IActionResult> ChangePassword(ChangePasswordRequestDto changePasswordRequestDto)
     {
         try
         {
+            var accessToken = Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
+
+            bool isTokenInvalid = await _invalidTokenRepository.ExistsAsync(t => t.Token == accessToken);
+            if (isTokenInvalid)
+            {
+                return Unauthorized(new
+                {
+                    Success = false,
+                    StatusCode = StatusCodes.Status401Unauthorized,
+                    Message = "Invalid authentication token.."
+                });
+            }
+
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (string.IsNullOrEmpty(userId))
@@ -286,6 +359,200 @@ public class AccountController : ControllerBase
                 Success = true,
                 StatusCode = StatusCodes.Status200OK,
                 Message = "Password changed successfully."
+            });
+        }
+        catch (Exception)
+        {
+            throw;
+        }
+    }
+
+    [HttpPost("logout")]
+    [Authorize]
+    [EnableRateLimiting("post")]
+    public async Task<IActionResult> Logout()
+    {
+        try
+        {
+            var accessToken = Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
+
+            bool isTokenInvalid = await _invalidTokenRepository.ExistsAsync(t => t.Token == accessToken);
+            if (isTokenInvalid)
+            {
+                return Unauthorized(new
+                {
+                    Success = false,
+                    StatusCode = StatusCodes.Status401Unauthorized,
+                    Message = "Invalid authentication token.."
+                });
+            }
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized(new
+                {
+                    Success = false,
+                    StatusCode = StatusCodes.Status401Unauthorized,
+                    Message = "Invalid authentication token."
+                });
+            }
+
+            await _accountService.LogoutAsync(userId, accessToken);
+
+            return Ok(new
+            {
+                Success = true,
+                StatusCode = StatusCodes.Status200OK,
+                Message = "User logged out successfully."
+            });
+        }
+        catch (Exception)
+        {
+            throw;
+        }
+    }
+
+    [HttpPost("subscribe")]
+    [Authorize]
+    [EnableRateLimiting("post")]
+    public async Task<IActionResult> Subscribe([FromBody] SubscribeRequestDto subscribeRequestDto)
+    {
+        try
+        {
+            var accessToken = Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
+
+            bool isTokenInvalid = await _invalidTokenRepository.ExistsAsync(t => t.Token == accessToken);
+            if (isTokenInvalid)
+            {
+                return Unauthorized(new
+                {
+                    Success = false,
+                    StatusCode = StatusCodes.Status401Unauthorized,
+                    Message = "Invalid authentication token.."
+                });
+            }
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized(new
+                {
+                    Success = false,
+                    StatusCode = StatusCodes.Status401Unauthorized,
+                    Message = "Invalid authentication token."
+                });
+            }
+
+            if (!Guid.TryParse(userId, out Guid userIdGuid))
+            {
+                return BadRequest(new
+                {
+                    Success = true,
+                    StatusCode = StatusCodes.Status400BadRequest,
+                    Message = "Invalid job ID format."
+                });
+            }
+
+            var existingUserSubscription = await _userSubscriptionRepository.FirstOrDefaultAsync(u => u.UserId == userIdGuid);
+            if (existingUserSubscription != null)
+            {
+                existingUserSubscription.IsActive = true;
+                await _userSubscriptionRepository.UpdateAsync(existingUserSubscription);
+
+                return Ok(new
+                {
+                    Success = true,
+                    StatusCode = StatusCodes.Status200OK,
+                    Message = "Subscription activated successfully."
+                });
+            }
+
+            var userSubscription = new UserSubscription
+            {
+                UserId = userIdGuid,
+                Email = subscribeRequestDto.Email,
+                IsActive = true,
+            };
+
+            await _userSubscriptionRepository.AddAsync(userSubscription);
+
+            return Ok(new
+            {
+                Success = true,
+                StatusCode = StatusCodes.Status200OK,
+                Message = "Subscribed successfully."
+            });
+        }
+        catch (Exception)
+        {
+            throw;
+        }
+    }
+
+    [HttpPost("unsubscribe")]
+    [Authorize]
+    [EnableRateLimiting("post")]
+    public async Task<IActionResult> UnSubscribe([FromBody] UnSubscribeRequestDto unSubscribeRequestDto)
+    {
+        try
+        {
+            var accessToken = Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
+
+            bool isTokenInvalid = await _invalidTokenRepository.ExistsAsync(t => t.Token == accessToken);
+            if (isTokenInvalid)
+            {
+                return Unauthorized(new
+                {
+                    Success = false,
+                    StatusCode = StatusCodes.Status401Unauthorized,
+                    Message = "Invalid authentication token.."
+                });
+            }
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized(new
+                {
+                    Success = false,
+                    StatusCode = StatusCodes.Status401Unauthorized,
+                    Message = "Invalid authentication token."
+                });
+            }
+
+            if (!Guid.TryParse(userId, out Guid userIdGuid))
+            {
+                return BadRequest(new
+                {
+                    Success = true,
+                    StatusCode = StatusCodes.Status400BadRequest,
+                    Message = "Invalid job ID format."
+                });
+            }
+
+            var existingUserSubscription = await _userSubscriptionRepository.FirstOrDefaultAsync(u => u.UserId == userIdGuid);
+            if (existingUserSubscription == null)
+            {
+                return NotFound(new
+                {
+                    Success = false,
+                    StatusCode = StatusCodes.Status404NotFound,
+                    Message = "Subscription not found."
+                });
+            }
+
+            existingUserSubscription.IsActive = false;
+            await _userSubscriptionRepository.UpdateAsync(existingUserSubscription);
+
+            return Ok(new
+            {
+                Success = true,
+                StatusCode = StatusCodes.Status200OK,
+                Message = "Unsubscribed successfully."
             });
         }
         catch (Exception)
