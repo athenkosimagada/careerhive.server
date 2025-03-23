@@ -1,14 +1,13 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace careerhive.application.DTOs.Request;
+namespace careerhive.application.Request;
 
 public class LoginRequestDto
 {
-    [Required]
-    [EmailAddress]
-    public string Email { get; set; } = null!;
+    [Required(ErrorMessage = "Email is required.")]
+    [EmailAddress(ErrorMessage = "Invalid email address.")]
+    public string Email { get; set; } = string.Empty;
 
-    [Required]
-    [DataType(DataType.Password)]
-    public string Password { get; set; } = null!;
+    [Required(ErrorMessage = "Password is required.")]
+    public string Password { get; set; } = string.Empty;
 }

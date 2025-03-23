@@ -1,7 +1,6 @@
 ﻿using System.Text;
 using careerhive.application.Interfaces.IService;
 using careerhive.application.Mappings;
-using careerhive.application.Service;
 using careerhive.application.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http;
@@ -14,7 +13,7 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddApplication(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddScoped<IAccountService, AccountService>();
+        services.AddScoped<IAccountsService, AccountService>();
         services.AddScoped<IJwtService, JwtService>();
         services.AddScoped<IEmailService, EmailService>();
         services.AddScoped<ISafeBrowsingService, SafeBrowsingService>();

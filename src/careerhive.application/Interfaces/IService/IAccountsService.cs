@@ -1,12 +1,11 @@
-﻿using careerhive.application.DTOs;
-using careerhive.application.DTOs.Request;
-using careerhive.application.DTOs.Response;
+﻿using careerhive.application.DTOs.Response;
+using careerhive.application.Request;
 using careerhive.domain.Entities;
 using Microsoft.AspNetCore.Identity;
 
 namespace careerhive.application.Interfaces.IService;
 
-public interface IAccountService
+public interface IAccountsService
 {
     Task RegisterAsync(RegisterRequestDto registerRequestDto);
     Task<LoginResponseDto> LoginAsync(LoginRequestDto loginDto);
@@ -19,7 +18,7 @@ public interface IAccountService
     
     Task<RefreshTokenResponseDto> RefreshTokenAsync(RefreshTokenRequestDto refreshTokenRequestDto);
 
-    Task<UserInfoDto> GetUserInfoAsync(string userId);
+    Task<UserInfoResponseDto> GetUserInfoAsync(string userId);
     Task UpdateUserInfoAsync(string userId, UpdateUserInfoRequestDto updateUserInfoRequestDto);
 
     Task Manage2faAsync(string userId, Manage2faRequestDto manage2FaRequestDto);

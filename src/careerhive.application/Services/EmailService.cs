@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 using MailKit.Net.Smtp;
 using MimeKit;
 
-namespace careerhive.application.Service;
+namespace careerhive.application.Services;
 
 public class EmailService : IEmailService
 {

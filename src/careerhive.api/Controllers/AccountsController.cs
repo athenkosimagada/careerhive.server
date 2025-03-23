@@ -1,11 +1,9 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Azure.Core;
-using careerhive.application.DTOs;
-using careerhive.application.DTOs.Request;
-using careerhive.application.DTOs.Response;
 using careerhive.application.Interfaces.IRepository;
 using careerhive.application.Interfaces.IService;
+using careerhive.application.Request;
 using careerhive.domain.Entities;
 using careerhive.domain.Exceptions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -17,18 +15,18 @@ using static System.Runtime.InteropServices.JavaScript.JSType;
 namespace careerhive.api.Controllers;
 
 [ApiController]
-[Route("api/account")]
-public class AccountController : ControllerBase
+[Route("api/accounts")]
+public class AccountsController : ControllerBase
 {
-    private readonly IAccountService _accountService;
+    private readonly IAccountsService _accountsService;
     private readonly IGenericRepository<UserSubscription> _userSubscriptionRepository;
     private readonly IGenericRepository<InvalidToken> _invalidTokenRepository;
 
-    public AccountController(IAccountService authService, 
+    public AccountsController(IAccountsService authService, 
         IGenericRepository<UserSubscription> userSubscriptionRepository,
         IGenericRepository<InvalidToken> invalidTokenRepository)
     {
-        _accountService = authService;
+        _accountsService = authService;
         _userSubscriptionRepository = userSubscriptionRepository;
         _invalidTokenRepository = invalidTokenRepository;
     }
@@ -39,7 +37,7 @@ public class AccountController : ControllerBase
     {
         try
         {
-            await _accountService.RegisterAsync(registerDto);
+            await _accountsService.RegisterAsync(registerDto);
             return Ok(new 
             { 
                 Success = true, 
@@ -59,7 +57,7 @@ public class AccountController : ControllerBase
     {
         try
         {
-            var loginResponseDto = await _accountService.LoginAsync(loginDto);
+            var loginResponseDto = await _accountsService.LoginAsync(loginDto);
 
             return Ok(new 
             { 
@@ -80,7 +78,7 @@ public class AccountController : ControllerBase
     {
         try
         {
-            var refreshTokenResponseDto = await _accountService.RefreshTokenAsync(refreshTokenDto);
+            var refreshTokenResponseDto = await _accountsService.RefreshTokenAsync(refreshTokenDto);
 
             return Ok(new
             {
@@ -101,7 +99,7 @@ public class AccountController : ControllerBase
     {
         try
         {
-            await _accountService.ResendConfirmationEmailAsync(resendConfirmationDto);
+            await _accountsService.ResendConfirmationEmailAsync(resendConfirmationDto);
 
             return Ok(new
             {
@@ -122,7 +120,7 @@ public class AccountController : ControllerBase
     {
         try
         {
-            await _accountService.ConfirmEmailAsync(userId, Uri.UnescapeDataString(token));
+            await _accountsService.ConfirmEmailAsync(userId, Uri.UnescapeDataString(token));
 
             return Ok(new
             {
@@ -143,7 +141,7 @@ public class AccountController : ControllerBase
     {
         try
         {
-            await _accountService.ForgotPasswordAsync(forgotPasswordRequestDto);
+            await _accountsService.ForgotPasswordAsync(forgotPasswordRequestDto);
 
             return Ok(new
             {
@@ -164,7 +162,7 @@ public class AccountController : ControllerBase
     {
         try
         {
-            await _accountService.ResetPasswordAsync(userId, Uri.UnescapeDataString(token), resetPasswordRequestDto);
+            await _accountsService.ResetPasswordAsync(userId, Uri.UnescapeDataString(token), resetPasswordRequestDto);
 
             return Ok(new
             {
@@ -211,13 +209,13 @@ public class AccountController : ControllerBase
                 });
             }
 
-            var userInfoDto = await _accountService.GetUserInfoAsync(userId);
+            var userInfoResponseDto = await _accountsService.GetUserInfoAsync(userId);
 
             return Ok(new
             {
                 Success = true,
                 StatusCode = StatusCodes.Status200OK,
-                UserInfo = userInfoDto
+                UserInfo = userInfoResponseDto
             });
         }
         catch (Exception)
@@ -258,7 +256,7 @@ public class AccountController : ControllerBase
                 });
             }
 
-            await _accountService.UpdateUserInfoAsync(userId, updateUserInfoRequestDto); 
+            await _accountsService.UpdateUserInfoAsync(userId, updateUserInfoRequestDto); 
 
             return Ok(new
             {
@@ -305,7 +303,7 @@ public class AccountController : ControllerBase
                 });
             }
 
-            await _accountService.Manage2faAsync(userId, manage2FaRequestDto);
+            await _accountsService.Manage2faAsync(userId, manage2FaRequestDto);
 
             return Ok(new
             {
@@ -352,7 +350,7 @@ public class AccountController : ControllerBase
                 });
             }
 
-            await _accountService.ChangePasswordAsync(userId, changePasswordRequestDto);
+            await _accountsService.ChangePasswordAsync(userId, changePasswordRequestDto);
 
             return Ok(new
             {
@@ -399,7 +397,7 @@ public class AccountController : ControllerBase
                 });
             }
 
-            await _accountService.LogoutAsync(userId, accessToken);
+            await _accountsService.LogoutAsync(userId, accessToken);
 
             return Ok(new
             {

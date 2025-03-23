@@ -28,25 +28,27 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "CareerHive API v1"));
+    app.UseWebAssemblyDebugging();
+}
+else
+{
+    app.UseHttpsRedirection();
 }
 
-app.UseMiddleware<ExceptionHandlingMiddleware>();
+app.UseCors("AllowBlazorClient");
 
-app.Use(async (context, next) =>
-{
-    context.Response.Headers.Append("Content-Security-Policy", "default-src 'self'; script-src 'self'");
-    await next();
-});
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 app.UseRouting();
 
 app.UseRateLimiter();
 
-app.UseHttpsRedirection();
-
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.UseStaticFiles();
+app.UseBlazorFrameworkFiles();
+app.MapFallbackToFile("index.html");
 
 app.MapControllers();
 

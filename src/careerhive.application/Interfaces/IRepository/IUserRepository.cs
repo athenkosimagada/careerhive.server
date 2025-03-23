@@ -1,6 +1,4 @@
 ﻿using System.Linq.Expressions;
-using careerhive.application.DTOs;
-using careerhive.application.DTOs.Request;
 using careerhive.domain.Entities;
 using Microsoft.AspNetCore.Identity;
 

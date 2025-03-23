@@ -16,6 +16,16 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddAPI(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddCors(options =>
+        {
+            options.AddPolicy("AllowBlazorClient", policy =>
+            {
+                policy.WithOrigins("https://localhost:7001", "https://localhost:7000")
+                      .AllowAnyHeader()
+                      .AllowAnyMethod()
+                      .AllowCredentials();
+            });
+        });
         services.AddControllers()
             .AddJsonOptions(options =>
             {
@@ -74,7 +84,7 @@ public static class DependencyInjection
 
         services.AddRateLimiter(options =>
         {
-            options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+            /*options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
                  RateLimitPartition.GetFixedWindowLimiter(
                      partitionKey: httpContext.User.Identity?.Name ?? httpContext.Request.Headers.Host.ToString(),
                      factory: partition => new FixedWindowRateLimiterOptions
@@ -83,7 +93,7 @@ public static class DependencyInjection
                          PermitLimit = 100,
                          QueueLimit = 0,
                          Window = TimeSpan.FromMinutes(1)
-                     }));
+                     }));*/
 
             options.AddPolicy("login", httpContext =>
                  RateLimitPartition.GetFixedWindowLimiter(

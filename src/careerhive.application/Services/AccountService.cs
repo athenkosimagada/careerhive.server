@@ -1,11 +1,10 @@
 ﻿using System.Security.Authentication;
 using System.Security.Claims;
 using AutoMapper;
-using careerhive.application.DTOs;
-using careerhive.application.DTOs.Request;
 using careerhive.application.DTOs.Response;
 using careerhive.application.Interfaces.IRepository;
 using careerhive.application.Interfaces.IService;
+using careerhive.application.Request;
 using careerhive.domain.Entities;
 using careerhive.domain.Exceptions;
 using Microsoft.AspNetCore.Identity;
@@ -13,7 +12,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace careerhive.application.Services;
-public class AccountService : IAccountService
+public class AccountService : IAccountsService
 {
     private readonly IUserRepository _userRepository;
     private readonly IUserTokenRepository _userTokenRepository;
@@ -60,7 +59,7 @@ public class AccountService : IAccountService
 
         var roles = (await _userRepository.GetRolesAsync()).Select(role => role!.ToLower()).ToList();
 
-        if (!string.IsNullOrWhiteSpace(registerDto.Role) && !roles.Contains(registerDto.Role.ToLower()))
+        if (!roles.Any() || !string.IsNullOrWhiteSpace(registerDto.Role) && !roles.Contains(registerDto.Role.ToLower()))
         {
             throw new NotFoundException("The requested role is invalid or unavailable.");
         }
@@ -348,7 +347,7 @@ public class AccountService : IAccountService
         };
     }
 
-    public async Task<UserInfoDto> GetUserInfoAsync(string userId)
+    public async Task<UserInfoResponseDto> GetUserInfoAsync(string userId)
     {
         if(!Guid.TryParse(userId, out Guid userIdGuid))
         {
@@ -364,7 +363,7 @@ public class AccountService : IAccountService
             throw new NotFoundException($"User with ID {userId} not found.");
         }
 
-        return _mapper.Map<UserInfoDto>(user);
+        return _mapper.Map<UserInfoResponseDto>(user);
     }
 
     public async Task UpdateUserInfoAsync(string userId, UpdateUserInfoRequestDto updateUserInfoRequestDto)

@@ -4,8 +4,6 @@ using careerhive.infrastructure.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
-using careerhive.application.DTOs;
-using careerhive.application.DTOs.Request;
 
 namespace careerhive.infrastructure.Repository;
 public class UserRepository : IUserRepository

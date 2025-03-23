@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace careerhive.application.DTOs.Request;
+namespace careerhive.application.Request;
 public class ResendConfirmationRequestDto
 {
     [Required]

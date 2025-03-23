@@ -1,5 +1,5 @@
-﻿namespace careerhive.application.DTOs;
-public class UserInfoDto
+﻿namespace careerhive.application.DTOs.Response;
+public class UserInfoResponseDto
 {
     public string? FirstName { get; set; }
     public string? LastName { get; set; }

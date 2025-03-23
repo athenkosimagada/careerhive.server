@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace careerhive.application.DTOs.Request;
+namespace careerhive.application.Request;
 public class ForgotPasswordRequestDto
 {
     [Required]

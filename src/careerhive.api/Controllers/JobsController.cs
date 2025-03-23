@@ -1,10 +1,10 @@
 ﻿using System.Linq.Expressions;
 using System.Security.Claims;
 using AutoMapper;
-using careerhive.application.DTOs.Request;
 using careerhive.application.DTOs.Response;
 using careerhive.application.Interfaces.IRepository;
 using careerhive.application.Interfaces.IService;
+using careerhive.application.Request;
 using careerhive.domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -20,6 +20,8 @@ public class JobsController : ControllerBase
     private readonly IGenericRepository<Job> _jobRepository;
     private readonly IGenericRepository<InvalidToken> _invalidTokenRepository;
     private readonly IGenericRepository<UserSubscription> _userSubscriptionRepository;
+    private readonly IGenericRepository<SavedJob> _savedJobRepository;
+
     private readonly IEmailService _emailService;
     private readonly ISafeBrowsingService _safeBrowsingService;
     private readonly IMapper _mapper;
@@ -27,6 +29,7 @@ public class JobsController : ControllerBase
     public JobsController(IGenericRepository<Job> jobRepository, 
         IGenericRepository<InvalidToken> invalidTokenRepository, 
         IGenericRepository<UserSubscription> userSubscriptionRepository,
+        IGenericRepository<SavedJob> savedJobRepository,
         IEmailService emailService,
         ISafeBrowsingService safeBrowsingService,
         IMapper mapper)
@@ -34,6 +37,7 @@ public class JobsController : ControllerBase
         _jobRepository = jobRepository ?? throw new ArgumentNullException(nameof(jobRepository));
         _invalidTokenRepository = invalidTokenRepository;
         _userSubscriptionRepository = userSubscriptionRepository;
+        _savedJobRepository = savedJobRepository;
         _emailService = emailService;
         _safeBrowsingService = safeBrowsingService;
         _mapper = mapper;
@@ -42,7 +46,7 @@ public class JobsController : ControllerBase
     [HttpGet("all")]
     [Authorize]
     [EnableRateLimiting("get")]
-    public async Task<IActionResult> GetAll(int pageNumber = 1, int pageSize = 10, [FromQuery] bool includeUser = false)
+    public async Task<IActionResult> GetAll(int pageNumber = 1, int pageSize = 10, [FromQuery] bool includeUser = false, [FromQuery] string? userId = null)
     {
         if (pageNumber < 1)
         {
@@ -73,37 +77,122 @@ public class JobsController : ControllerBase
             {
                 Success = false,
                 StatusCode = StatusCodes.Status401Unauthorized,
-                Message = "Invalid authentication token.."
+                Message = "Invalid token."
             });
         }
 
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-        if (string.IsNullOrEmpty(userId))
+        if (string.IsNullOrEmpty(currentUserId))
         {
             return Unauthorized(new
             {
                 Success = false,
                 StatusCode = StatusCodes.Status401Unauthorized,
-                Message = "Invalid authentication token."
+                Message = "Invalid token."
             });
         }
 
         IEnumerable<Job> jobs;
+        int totalCount;
 
-        if (includeUser)
+        if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out Guid userGuid))
         {
-            jobs = await _jobRepository.GetPagedAsync(pageNumber, pageSize, j => j.CreatedAt, true, null, j => j.PostedBy);
+            if(userGuid.ToString() != currentUserId)
+            {
+                return Forbid();
+            }
+
+            jobs = await _jobRepository.GetPagedAsync(pageNumber, pageSize, j => j.CreatedAt, true, j => j.PostedByUserId == userGuid);
+            totalCount = await _jobRepository.CountAsync(j => j.PostedByUserId == userGuid);
         }
         else
         {
-            jobs = await _jobRepository.GetPagedAsync(pageNumber, pageSize, j => j.CreatedAt, true);
+            jobs = includeUser
+                ? await _jobRepository.GetPagedAsync(pageNumber, pageSize, j => j.CreatedAt, true, null, j => j.PostedBy)
+                : await _jobRepository.GetPagedAsync(pageNumber, pageSize, j => j.CreatedAt, true);
+
+            totalCount = await _jobRepository.CountAsync();
         }
 
-        var totalCount = await _jobRepository.CountAsync();
         var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
-
         var jobResponseDtos = _mapper.Map<IEnumerable<JobResponseDto>>(jobs);
+
+        return Ok(new
+        {
+            Success = true,
+            StatusCode = StatusCodes.Status200OK,
+            Data = jobResponseDtos,
+            PageNumber = pageNumber,
+            PageSize = pageSize,
+            TotalCount = totalCount,
+            TotalPages = totalPages
+        });
+    }
+
+    [HttpGet("saved-jobs")]
+    [Authorize]
+    [EnableRateLimiting("get")]
+    public async Task<IActionResult> SavedJobs(int pageNumber = 1, int pageSize = 10)
+    {
+        if (pageNumber < 1)
+        {
+            return BadRequest(new
+            {
+                Success = false,
+                StatusCode = StatusCodes.Status400BadRequest,
+                Message = "Page number must be greater than or equal to 1."
+            });
+        }
+
+        if (pageSize < 1 || pageSize > 100)
+        {
+            return BadRequest(new
+            {
+                Success = false,
+                StatusCode = StatusCodes.Status400BadRequest,
+                Message = "Page size must be between 1 and 100."
+            });
+        }
+
+        var accessToken = Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
+
+        bool isTokenInvalid = await _invalidTokenRepository.ExistsAsync(t => t.Token == accessToken);
+        if (isTokenInvalid)
+        {
+            return Unauthorized(new
+            {
+                Success = false,
+                StatusCode = StatusCodes.Status401Unauthorized,
+                Message = "Invalid token."
+            });
+        }
+
+        var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (string.IsNullOrEmpty(currentUserId))
+        {
+            return Unauthorized(new
+            {
+                Success = false,
+                StatusCode = StatusCodes.Status401Unauthorized,
+                Message = "Invalid token."
+            });
+        }
+
+        var savedJobs = await _savedJobRepository.GetPagedAsync(
+            pageNumber,
+            pageSize,
+            null,
+            false,
+            j => j.SavedByUserId == Guid.Parse(currentUserId),
+            j => j.SavedJobDetails,
+            j => j.SavedBy
+        );
+
+        var totalCount = await _savedJobRepository.CountAsync(j => j.SavedByUserId == Guid.Parse(currentUserId));
+        var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+        var jobResponseDtos = _mapper.Map<IEnumerable<JobResponseDto>>(savedJobs);
 
         return Ok(new
         {
@@ -131,7 +220,7 @@ public class JobsController : ControllerBase
             {
                 Success = false,
                 StatusCode = StatusCodes.Status401Unauthorized,
-                Message = "Invalid authentication token.."
+                Message = "Invalid token."
             });
         }
 
@@ -143,7 +232,7 @@ public class JobsController : ControllerBase
             {
                 Success = false,
                 StatusCode = StatusCodes.Status401Unauthorized,
-                Message = "Invalid authentication token."
+                Message = "Invalid token."
             });
         }
 
@@ -201,7 +290,7 @@ public class JobsController : ControllerBase
             {
                 Success = false,
                 StatusCode = StatusCodes.Status401Unauthorized,
-                Message = "Invalid authentication token.."
+                Message = "Invalid token."
             });
         }
 
@@ -213,7 +302,7 @@ public class JobsController : ControllerBase
             {
                 Success = false,
                 StatusCode = StatusCodes.Status401Unauthorized,
-                Message = "Invalid authentication token."
+                Message = "Invalid token."
             });
         }
 
@@ -270,6 +359,95 @@ public class JobsController : ControllerBase
         });
     }
 
+    [HttpPost("save")]
+    [Authorize]
+    public async Task<IActionResult> SaveJob([FromBody] Guid jobId)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Unauthorized(new
+            {
+                Success = false,
+                StatusCode = StatusCodes.Status401Unauthorized,
+                Message = "Invalid token."
+            });
+        }
+
+        var jobExists = await _jobRepository.ExistsAsync(j => j.Id == jobId);
+        if (!jobExists)
+        {
+            return NotFound(new
+            {
+                Success = false,
+                StatusCode = StatusCodes.Status404NotFound,
+                Message = "Job not found."
+            });
+        }
+
+        var alreadySaved = await _savedJobRepository.ExistsAsync(s => s.SavedByUserId == Guid.Parse(userId) && s.JobId == jobId);
+        if (alreadySaved)
+        {
+            return Conflict(new
+            {
+                Success = false,
+                StatusCode = StatusCodes.Status409Conflict,
+                Message = "Job is already saved."
+            });
+        }
+
+        var savedJob = new SavedJob
+        {
+            JobId = jobId,
+            SavedByUserId = Guid.Parse(userId),
+        };
+
+        await _savedJobRepository.AddAsync(savedJob);
+
+        return Ok(new
+        {
+            Success = true,
+            StatusCode = StatusCodes.Status200OK,
+            Message = "Job saved successfully."
+        });
+    }
+
+    [HttpDelete("unsave")]
+    [Authorize]
+    public async Task<IActionResult> UnsaveJob([FromQuery] Guid jobId)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Unauthorized(new
+            {
+                Success = false,
+                StatusCode = StatusCodes.Status401Unauthorized,
+                Message = "Invalid token."
+            });
+        }
+
+        var savedJob = await _savedJobRepository.FirstOrDefaultAsync(s => s.SavedByUserId == Guid.Parse(userId) && s.JobId == jobId);
+        if (savedJob == null)
+        {
+            return NotFound(new
+            {
+                Success = false,
+                StatusCode = StatusCodes.Status404NotFound,
+                Message = "Job not found in saved list."
+            });
+        }
+
+        await _savedJobRepository.RemoveAsync(savedJob);
+
+        return Ok(new
+        {
+            Success = true,
+            StatusCode = StatusCodes.Status200OK,
+            Message = "Job removed from saved list."
+        });
+    }
+
     [HttpPut("{id}")]
     [Authorize]
     [EnableRateLimiting("put")]
@@ -284,7 +462,7 @@ public class JobsController : ControllerBase
             {
                 Success = false,
                 StatusCode = StatusCodes.Status401Unauthorized,
-                Message = "Invalid authentication token.."
+                Message = "Invalid token."
             });
         }
 
@@ -296,7 +474,7 @@ public class JobsController : ControllerBase
             {
                 Success = false,
                 StatusCode = StatusCodes.Status401Unauthorized,
-                Message = "Invalid authentication token."
+                Message = "Invalid token."
             });
         }
 
@@ -368,7 +546,7 @@ public class JobsController : ControllerBase
             {
                 Success = false,
                 StatusCode = StatusCodes.Status401Unauthorized,
-                Message = "Invalid authentication token.."
+                Message = "Invalid token."
             });
         }
 
@@ -380,7 +558,7 @@ public class JobsController : ControllerBase
             {
                 Success = false,
                 StatusCode = StatusCodes.Status401Unauthorized,
-                Message = "Invalid authentication token."
+                Message = "Invalid token."
             });
         }
 
@@ -435,7 +613,7 @@ public class JobsController : ControllerBase
             {
                 Success = false,
                 StatusCode = StatusCodes.Status401Unauthorized,
-                Message = "Invalid authentication token.."
+                Message = "Invalid token."
             });
         }
 
