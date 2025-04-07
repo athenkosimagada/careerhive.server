@@ -44,7 +44,6 @@ public class JobsController : ControllerBase
     }
 
     [HttpGet("all")]
-    [Authorize]
     [EnableRateLimiting("get")]
     public async Task<IActionResult> GetAll(int pageNumber = 1, int pageSize = 10, [FromQuery] bool includeUser = false, [FromQuery] string? userId = null)
     {

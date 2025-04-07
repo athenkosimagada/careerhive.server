@@ -200,7 +200,7 @@ public static class DependencyInjection
                     {
                         Success = false,
                         StatusCode = StatusCodes.Status429TooManyRequests,
-                        Message = $"Too many requests. Please try again after {retryAfter.TotalMinutes} minute(s). " +
+                        Error = $"Too many requests. Please try again after {retryAfter.TotalMinutes} minute(s). " +
                                   $"Read more about our rate limits at https://example.org/docs/ratelimiting."
                     };
                     await response.WriteAsJsonAsync(errorResponse, cancellationToken);
@@ -211,7 +211,7 @@ public static class DependencyInjection
                     {
                         Success = false,
                         StatusCode = StatusCodes.Status429TooManyRequests,
-                        Message = "Too many requests. Please try again later. " +
+                        Error = "Too many requests. Please try again later. " +
                                   $"Read more about our rate limits at https://example.org/docs/ratelimiting."
                     };
                     await response.WriteAsJsonAsync(errorResponse, cancellationToken);

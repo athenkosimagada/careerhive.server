@@ -487,12 +487,12 @@ public class AccountService : IAccountsService
     private string GenerateConfirmationLink(Guid userId, string token)
     {
         var encodedToken = Uri.EscapeDataString(token);
-        return $"https://localhost:7264/api/auth/confirm-email?userId={userId}&token={encodedToken}";
+        return $"https://localhost:5000/confirm-email?userId={userId}&token={encodedToken}";
     }
 
     private string GenerateResetPasswordLink(Guid userId, string token)
     {
         var encodedToken = Uri.EscapeDataString(token);
-        return $"https://localhost:7264/api/auth/reset-password?userId={userId}&token={encodedToken}";
+        return $"https://localhost:5000/reset-password?userId={userId}&token={encodedToken}";
     }
 }
