@@ -20,7 +20,7 @@ public static class DependencyInjection
         {
             options.AddPolicy("AllowBlazorClient", policy =>
             {
-                policy.WithOrigins("https://localhost:7001", "https://localhost:7000")
+                policy.WithOrigins("https://localhost:7073")
                       .AllowAnyHeader()
                       .AllowAnyMethod()
                       .AllowCredentials();

@@ -51,10 +51,13 @@ public class AccountService : IAccountsService
             throw new AlreadyExistsException("A user with this email already exists.");
         }
 
-        var existingUserWithPhoneNumber = await _userRepository.GetUserAsync(u => u.PhoneNumber == registerDto.PhoneNumber);
-        if (existingUserWithPhoneNumber != null)
+        if (!string.IsNullOrEmpty(registerDto.PhoneNumber))
         {
-            throw new AlreadyExistsException("A user with this phone number already exists.");
+            var existingUserWithPhoneNumber = await _userRepository.GetUserAsync(u => u.PhoneNumber == registerDto.PhoneNumber);
+            if (existingUserWithPhoneNumber != null)
+            {
+                throw new AlreadyExistsException("A user with this phone number already exists.");
+            }
         }
 
         var roles = (await _userRepository.GetRolesAsync()).Select(role => role!.ToLower()).ToList();
